@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nigerian E-commerce Product Comparison</title>
+    <style>
+        :root {
+            --jumia-color: #f68b1e;
+            --konga-color: #33b27b;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--jumia-color), var(--konga-color));
+            color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        .search-form {
+            display: flex;
+            gap: 10px;
+        }
+        
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, var(--jumia-color), var(--konga-color));
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--jumia-color);
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results-container {
+            display: none;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .timestamp {
+            font-size: 14px;
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .platform {
+            flex: 1;
+            min-width: 300px;
+            max-width: 600px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .platform-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .platform-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+        
+        .platform-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .jumia-title {
+            color: var(--jumia-color);
+        }
+        
+        .konga-title {
+            color: var(--konga-color);
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        
+        .product-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+        
+        .product-image {
+            width: 100%;
+            height: 180px;
+            object-fit: contain;
+            background-color: #f9f9f9;
+            padding: 10px;
+        }
+        
+        .product-info {
+            padding: 15px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .product-name {
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #333;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+        
+        .product-price {
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+            margin-top: auto;
+        }
+        
+        .discount {
+            display: inline-block;
+            background-color: #ff4d4d;
+            color: white;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        
+        .original-price {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 13px;
+            font-weight: normal;
+            margin-left: 5px;
+        }
+        
+        .button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            text-align: center;
+            border: none;
+            border-radius: 4px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        
+        .jumia-button {
+            background-color: var(--jumia-color);
+            color: white;
+        }
+        
+        .jumia-button:hover {
+            background-color: #e67e0d;
+        }
+        
+        .konga-button {
+            background-color: var(--konga-color);
+            color: white;
+        }
+        
+        .konga-button:hover {
+            background-color: #2a9e6c;
+        }
+        
+        @media screen and (max-width: 768px) {
+            .results-container {
+                flex-direction: column;
+            }
+            
+            .platform {
+                max-width: 100%;
+            }
+            
+            .product-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+            
+            .search-form {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+        
+        .no-results {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .placeholder-image {
+            width: 100%;
+            height: 180px;
+            background-color: #f1f1f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .error-message {
+            background-color: #ffe0e0;
+            color: #d83030;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .search-history {
+            margin-top: 10px;
+        }
+        
+        .search-history h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .history-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .history-tag {
+            background-color: #f1f1f1;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .history-tag:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: var(--border-radius);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .modal h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .modal p {
+            margin-bottom: 25px;
+            color: #666;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Nigerian E-commerce Product Comparison</h1>
+        <p>Compare products from Jumia and Konga</p>
+        <div class="timestamp" id="timestamp">Ready to search</div>
+    </header>
+    
+    <div class="search-container">
+        <div class="search-form">
+            <input type="text" id="search-input" placeholder="Enter a product to search (e.g., smartphone, laptop, headphones)">
+            <button id="search-button">Search</button>
+        </div>
+        
+        <div class="error-message" id="error-message"></div>
+        
+        <div class="search-history">
+            <h3>Recent searches:</h3>
+            <div class="history-tags" id="history-tags">
+                <span class="history-tag">smartphone</span>
+                <span class="history-tag">laptop</span>
+                <span class="history-tag">headphones</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Searching both platforms...</p>
+        <p>This may take up to 30 seconds</p>
+    </div>
+    
+    <div class="results-container" id="results-container">
+        <!-- Jumia Platform -->
+        <div class="platform">
+            <div class="platform-header">
+                <div class="platform-logo" style="background-color: var(--jumia-color);"></div>
+                <h2 class="platform-title jumia-title">Jumia</h2>
+            </div>
+            
+            <div class="product-grid" id="jumia-grid">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Konga Platform -->
+        <div class="platform">
+            <div class="platform-header">
+                <div class="platform-logo" style="background-color: var(--konga-color);"></div>
+                <h2 class="platform-title konga-title">Konga</h2>
+            </div>
+            
+            <div class="product-grid" id="konga-grid">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="setup-modal">
+        <div class="modal-content">
+            <h2>Setup Instructions</h2>
+            <p>
+                To use this comparison tool, you need to set up a Node.js server that handles the scraping. 
+                Follow these steps to get started:
+            </p>
+            <ol style="text-align: left; margin-bottom: 20px;">
+                <li>Create a file named <code>server.js</code> with the provided backend code</li>
+                <li>Install the required dependencies using npm</li>
+                <li>Add your ZenRows API key to a <code>.env</code> file</li>
+                <li>Start the server with <code>node server.js</code></li>
+            </ol>
+            <button id="close-modal">Got it!</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Show setup modal
+            document.getElementById('setup-modal').style.display = 'flex';
+            
+            // Close modal button
+            document.getElementById('close-modal').addEventListener('click', function() {
+                document.getElementById('setup-modal').style.display = 'none';
+            });
+            
+            // Elements
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.getElementById('search-button');
+            const loadingSection = document.getElementById('loading');
+            const resultsContainer = document.getElementById('results-container');
+            const jumiaGrid = document.getElementById('jumia-grid');
+            const kongaGrid = document.getElementById('konga-grid');
+            const errorMessage = document.getElementById('error-message');
+            const timestamp = document.getElementById('timestamp');
+            const historyTags = document.getElementById('history-tags');
+            
+            // Search history management
+            let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '["smartphone", "laptop", "headphones"]');
+            
+            // Update search history display
+            function updateSearchHistory() {
+                historyTags.innerHTML = '';
+                searchHistory.slice(0, 5).forEach(term => {
+                    const tag = document.createElement('span');
+                    tag.className = 'history-tag';
+                    tag.textContent = term;
+                    tag.addEventListener('click', () => {
+                        searchInput.value = term;
+                        performSearch(term);
+                    });
+                    historyTags.appendChild(tag);
+                });
+                
+                // Save to localStorage
+                localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+            }
+            
+            // Add a search term to history
+            function addToSearchHistory(term) {
+                // Remove if exists already
+                searchHistory = searchHistory.filter(item => item !== term);
+                // Add to beginning
+                searchHistory.unshift(term);
+                // Limit to 10 items
+                searchHistory = searchHistory.slice(0, 10);
+                updateSearchHistory();
+            }
+            
+            // Initialize history
+            updateSearchHistory();
+            
+            // Function to parse product data from the markdown content
+            function parseProducts(data, platform) {
+                const products = [];
+                
+                try {
+                    if (platform === 'jumia') {
+                        // This is a simplified parser that extracts product info from the markdown
+                        // A more robust parser would use regex or DOM parsing for better accuracy
+                        const productMatches = data.match(/\[.*?\]\(http:\/\/www\.jumia\.com\.ng\/.*?\)/g);
+                        
+                        if (productMatches && productMatches.length > 0) {
+                            productMatches.forEach(match => {
+                                // Extract name and URL
+                                const nameMatch = match.match(/\[(.*?)\]/);
+                                const urlMatch = match.match(/\((.*?)\)/);
+                                
+                                if (nameMatch && urlMatch) {
+                                    const name = nameMatch[1];
+                                    const url = urlMatch[1];
+                                    
+                                    // Skip categories and other non-product links
+                                    if (name && url && !name.includes('Category') && !name.includes('See All')) {
+                                        products.push({
+                                            name: name,
+                                            url: url,
+                                            price: 'Price unavailable', // Price would need more complex parsing
+                                            image: null
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    } else if (platform === 'konga') {
+                        // Extract Konga products
+                        const productSections = data.split('**');
+                        
+                        for (let i = 0; i < productSections.length; i++) {
+                            if (productSections[i].includes('http://www.konga.com/product/')) {
+                                const productBlock = productSections[i] + (productSections[i+1] || '');
+                                
+                                // Extract URL and name
+                                const urlMatch = productBlock.match(/\(http:\/\/www\.konga\.com\/product\/.*?\)/);
+                                let name = productBlock.trim();
+                                
+                                if (name.length > 10 && urlMatch) {
+                                    // Extract price from next section
+                                    const priceSection = productSections[i+1] || '';
+                                    const priceMatch = priceSection.match(/₦([\d,]+)/);
+                                    
+                                    const url = urlMatch[0].replace(/\(|\)/g, '');
+                                    const price = priceMatch ? `₦${priceMatch[1]}` : 'Price unavailable';
+                                    
+                                    // Clean up name
+                                    name = name.replace(/\[|\]/g, '').trim();
+                                    if (name.length > 10) {
+                                        products.push({
+                                            name: name,
+                                            url: url,
+                                            price: price,
+                                            image: null
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error parsing ${platform} data:`, error);
+                }
+                
+                // Return a limited number of products
+                return products.slice(0, 8);
+            }
+            
+            // Function to create product cards
+            function createProductCard(product, platform) {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                
+                // Create image placeholder
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'placeholder-image';
+                imageDiv.textContent = 'Image not available';
+                
+                // Create info section
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'product-info';
+                
+                // Create product name
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'product-name';
+                nameDiv.textContent = product.name;
+                
+                // Create price
+                const priceDiv = document.createElement('div');
+                priceDiv.className = 'product-price';
+                priceDiv.textContent = product.price;
+                
+                // Create button
+                const button = document.createElement('button');
+                button.className = `button ${platform}-button`;
+                button.textContent = `View on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`;
+                button.addEventListener('click', function() {
+                    window.open(product.url, '_blank');
+                });
+                
+                // Assemble card
+                infoDiv.appendChild(nameDiv);
+                infoDiv.appendChild(priceDiv);
+                card.appendChild(imageDiv);
+                card.appendChild(infoDiv);
+                card.appendChild(button);
+                
+                return card;
+            }
+            
+            // Function to perform the search
+            function performSearch(searchTerm) {
+                // Validate search term
+                if (!searchTerm || searchTerm.trim() === '') {
+                    errorMessage.textContent = 'Please enter a search term';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                
+                // Reset UI
+                errorMessage.style.display = 'none';
+                jumiaGrid.innerHTML = '';
+                kongaGrid.innerHTML = '';
+                resultsContainer.style.display = 'none';
+                loadingSection.style.display = 'block';
+                
+                // Update timestamp
+                const now = new Date();
+                timestamp.textContent = `Searching for "${searchTerm}" - ${now.toLocaleTimeString()}`;
+                
+                // Add to search history
+                addToSearchHistory(searchTerm);
+                
+           
+                // In production, you would make this API call instead:
+         
+         fetch(`http://localhost:3000/api/search?term=${encodeURIComponent(searchTerm)}`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Search failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        displayResults(data);
+        loadingSection.style.display = 'none';
+        resultsContainer.style.display = 'flex';
+        timestamp.textContent = `Results for "${searchTerm}" - ${now.toLocaleTimeString()}`;
+    })
+    .catch(error => {
+        errorMessage.textContent = `Error: ${error.message}`;
+        errorMessage.style.display = 'block';
+        loadingSection.style.display = 'none';
+    });
+            }
+            
+            // Function to display search results
+            function displayResults(data) {
+                // Clear previous results
+                jumiaGrid.innerHTML = '';
+                kongaGrid.innerHTML = '';
+                
+                // Process Jumia results
+                const jumiaProducts = data.find(item => item.source === 'jumia');
+                if (jumiaProducts && jumiaProducts.data) {
+                    const products = parseProducts(jumiaProducts.data, 'jumia');
+                    
+                    if (products.length === 0) {
+                        const noResults = document.createElement('div');
+                        noResults.className = 'no-results';
+                        noResults.textContent = 'No products found';
+                        jumiaGrid.appendChild(noResults);
+                    } else {
+                        products.forEach(product => {
+                            jumiaGrid.appendChild(createProductCard(product, 'jumia'));
+                        });
+                    }
+                }
+                
+                // Process Konga results
+                const kongaProducts = data.find(item => item.source === 'konga');
+                if (kongaProducts && kongaProducts.data) {
+                    const products = parseProducts(kongaProducts.data, 'konga');
+                    
+                    if (products.length === 0) {
+                        const noResults = document.createElement('div');
+                        noResults.className = 'no-results';
+                        noResults.textContent = 'No products found';
+                        kongaGrid.appendChild(noResults);
+                    } else {
+                        products.forEach(product => {
+                            kongaGrid.appendChild(createProductCard(product, 'konga'));
+                        });
+                    }
+                }
+            }
+            
+            // Function to generate mock data for demonstration
+            function generateMockData(searchTerm) {
+                const jumiaProducts = [
+                    {
+                        name: `${searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1)} Premium Model X1`,
+                        price: '₦179,000',
+                        url: 'http://www.jumia.com.ng/product-1'
+                    },
+                    {
+                        name: `Super ${searchTerm} Pro Version`,
+                        price: '₦145,500',
+                        url: 'http://www.jumia.com.ng/product-2'
+                    },
+                    {
+                        name: `${searchTerm} Ultra HD 2025 Edition`,
+                        price: '₦218,999',
+                        url: 'http://www.jumia.com.ng/product-3'
+                    },
+                    {
+                        name: `Basic ${searchTerm} for Beginners`,
+                        price: '₦85,000',
+                        url: 'http://www.jumia.com.ng/product-4'
+                    }
+                ];
+                
+                const kongaProducts = [
+                    {
+                        name: `${searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1)} Professional XL Series`,
+                        price: '₦189,500',
+                        url: 'http://www.konga.com/product-1'
+                    },
+                    {
+                        name: `Advanced ${searchTerm} with Extra Features`,
+                        price: '₦162,000',
+                        url: 'http://www.konga.com/product-2'
+                    },
+                    {
+                        name: `${searchTerm} Limited Edition Gold`,
+                        price: '₦235,000',
+                        url: 'http://www.konga.com/product-3'
+                    },
+                    {
+                        name: `Budget-friendly ${searchTerm} 2025`,
+                        price: '₦79,999',
+                        url: 'http://www.konga.com/product-4'
+                    }
+                ];
+                
+                const jumiaData = {
+                    source: 'jumia',
+                    searchTerm: searchTerm,
+                    timestamp: new Date().toISOString(),
+                    data: jumiaProducts.map(p => `[${p.name}](${p.url})\n\n${p.price}`).join('\n\n')
+                };
+                
+                const kongaData = {
+                    source: 'konga',
+                    searchTerm: searchTerm,
+                    timestamp: new Date().toISOString(),
+                    data: kongaProducts.map(p => `**${p.name}**(${p.url})\n\n${p.price}`).join('\n\n')
+                };
+                
+                return [jumiaData, kongaData];
+            }
+            
+            // Event listeners
+            searchButton.addEventListener('click', function() {
+                performSearch(searchInput.value);
+            });
+            
+            searchInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    performSearch(searchInput.value);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
