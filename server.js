@@ -1,4 +1,3 @@
-// server.js - Backend for E-commerce Comparison App
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -8,7 +7,7 @@ const path = require('path');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
 const app = express();
-const ZENROWS_PORT = process.env.ZENROWS_PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -71,22 +70,147 @@ app.get('/api/search', async (req, res) => {
         ];
         
         // Start the scraping with worker threads
-        const results = await runScrapers(urlsToScrape, searchTerm, ZENROWS_API_KEY);
+        const rawResults = await runScrapers(urlsToScrape, searchTerm, ZENROWS_API_KEY);
+        
+        // Process the raw results to extract product information
+        const processedResults = rawResults.map(result => {
+            const processedResult = {
+                source: result.source,
+                searchTerm: result.searchTerm,
+                timestamp: result.timestamp,
+                products: []
+            };
+            
+            if (result.error) {
+                return processedResult;
+            }
+            
+            try {
+                if (result.source === 'jumia') {
+                    processedResult.products = extractJumiaProducts(result.data);
+                } else if (result.source === 'konga') {
+                    processedResult.products = extractKongaProducts(result.data);
+                }
+            } catch (error) {
+                console.error(`Error processing ${result.source} data:`, error);
+            }
+            
+            return processedResult;
+        });
         
         // Store in cache
         searchCache.set(cacheKey, {
             timestamp: Date.now(),
-            results: results
+            results: processedResults
         });
         
         // Return the results
-        res.json(results);
+        res.json(processedResults);
         
     } catch (error) {
         console.error('Error handling search request:', error);
         res.status(500).json({ error: 'An error occurred during search' });
     }
 });
+
+// Function to extract product information from Jumia data
+function extractJumiaProducts(data) {
+    const products = [];
+    
+    try {
+        // Find product names and details in the Jumia data
+        const productData = Array.isArray(data) ? data : [data];
+        
+        for (const item of productData) {
+            // Process each item to find product information
+            if (item && typeof item === 'object') {
+                // Look for product name
+                if (item.name && typeof item.name === 'string' && !item.name.includes('CTA') && !item.name.includes('adUnitPath')) {
+                    // This appears to be a product
+                    const product = {
+                        name: item.name,
+                        brand: item.brandKey || item.categoryKey || '',
+                        price: '',
+                        originalPrice: null,
+                        discount: null,
+                        url: item.url || '',
+                        image: null
+                    };
+                    
+                    // Try to find price information
+                    if (item.lowPriceFormatted) {
+                        product.price = item.lowPriceFormatted;
+                    }
+                    
+                    // Add to products array if it seems to be a product
+                    if (product.name && !products.some(p => p.name === product.name)) {
+                        products.push(product);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error extracting Jumia products:', error);
+    }
+    
+    return products;
+}
+
+// Function to extract product information from Konga data
+function extractKongaProducts(data) {
+    const products = [];
+    
+    try {
+        // Find product information in the Konga data
+        if (Array.isArray(data) && data.length > 0) {
+            // Process first item which contains the product data
+            const firstItem = data[0];
+            
+            if (firstItem && firstItem.props && firstItem.props.initialState) {
+                const state = firstItem.props.initialState;
+                
+                // Check if there are search results
+                if (state.search && state.search.query === 'smartphone') {
+                    // Try to extract products from hits
+                    const hits = state.search.hits || [];
+                    
+                    hits.forEach(hit => {
+                        if (hit && hit.name) {
+                            const product = {
+                                name: hit.name,
+                                brand: hit.brand || '',
+                                price: formatPrice(hit.special_price || hit.price),
+                                originalPrice: hit.special_price ? formatPrice(hit.price) : null,
+                                discount: hit.special_price ? calculateDiscount(hit.price, hit.special_price) : null,
+                                url: `https://www.konga.com/product/${hit.url_key}`,
+                                image: hit.image_thumbnail_path ? `https://www-konga-com-res.cloudinary.com/w_auto,f_auto,fl_lossy,dpr_auto,q_auto/media/catalog/product${hit.image_thumbnail_path}` : null
+                            };
+                            
+                            products.push(product);
+                        }
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error extracting Konga products:', error);
+    }
+    
+    return products;
+}
+
+// Helper function to format price
+function formatPrice(price) {
+    if (!price) return '';
+    return `₦${Number(price).toLocaleString()}`;
+}
+
+// Helper function to calculate discount percentage
+function calculateDiscount(originalPrice, discountedPrice) {
+    if (!originalPrice || !discountedPrice) return null;
+    const discount = ((originalPrice - discountedPrice) / originalPrice) * 100;
+    return `-${Math.round(discount)}%`;
+}
 
 // Function to run scrapers using worker threads
 function runScrapers(urlsToScrape, searchTerm, apiKey) {
@@ -142,7 +266,12 @@ if (!isMainThread) {
                     'url': urlData.url,
                     'apikey': apiKey,
                     'wait': '5000',
-                    'response_type': 'markdown'
+                    'autoparse': 'true',
+                 //   'js_render': 'true',
+                 //   'json_response': 'true',
+                    // Adding site-specific parameters if needed
+                //    ...(urlData.site === 'jumia' ? { 'wait_for': '.core' } : {}),
+                 //   ...(urlData.site === 'konga' ? { 'wait_for': '.product-block' } : {})
                 }
             });
             
@@ -155,6 +284,8 @@ if (!isMainThread) {
                     timestamp: new Date().toISOString(),
                     data: response.data
                 };
+
+                let _result = response.data;
                 
                 // Save to individual file
                 fs.writeFileSync(urlData.outputFile, JSON.stringify(result, null, 2));
@@ -164,7 +295,7 @@ if (!isMainThread) {
                 });
                 
                 // Send result back to main thread
-                parentPort.postMessage({ type: 'result', data: result });
+                parentPort.postMessage({ type: 'result', data: _result});
                 
                 return true;
             } else {
@@ -218,12 +349,10 @@ if (!isMainThread) {
                 log: `Worker for ${urlData.site} failed: ${error.message}` 
             });
         });
-}
-
-// Start server only in main thread
-if (isMainThread) {
-    app.listen(ZENROWS_PORT, () => {
-        console.log(`E-commerce comparison server running on ZENROWS_PORT ${ZENROWS_PORT}`);
-        console.log(`Access the API at http://localhost:${ZENROWS_PORT}/api/search?term=smartphone`);
+} else {
+    // Start server only in main thread
+    app.listen(PORT, () => {
+        console.log(`E-commerce comparison server running on port ${PORT}`);
+        console.log(`Access the API at http://localhost:${PORT}/api/search?term=smartphone`);
     });
 }

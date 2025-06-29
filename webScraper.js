@@ -120,18 +120,24 @@ if (isMainThread) {
     const scrapeUrl = async () => {
         try {
             parentPort.postMessage(`Worker started for ${urlData.site}`);
-            
+            let jumiaCssExtractor = {'premiumItems': "[data-catalog='true']"};
             const response = await axios({
                 url: 'https://api.zenrows.com/v1/',
                 method: 'GET',
                 params: {
                     'url': urlData.url,
                     'apikey': apiKey,
-                    'wait': '5000',
-                  //  'js_render': 'true',
-                    'response_type': 'markdown',
+                    'wait': '15000',
+                    'js_render': 'true',
+                  //  'response_type': 'markdown',
+                  //  'autoparse': 'true',
+                   'original_status': true,
+                   'allowed_status_codes': '400,500,503',
+                    'css_extractor': jumiaCssExtractor,
+                  //  ...(urlData.site === 'jumia' ? { 'css_extractor': jumiaCssExtractor } : {}),
                     // Adding site-specific parameters if needed
-                //    ...(urlData.site === 'jumia' ? { 'wait_for': '.core' } : {}),
+                  //  ...(urlData.site === 'jumia' ? { 'wait_for': '[data-catalog="true"]' } : {}),
+                  //  ...(urlData.site === 'jumia' ? { 'wait_for': '.core' } : {}),
                   //  ...(urlData.site === 'konga' ? { 'wait_for': '.product-block' } : {})
                 }
             });

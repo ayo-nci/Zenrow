@@ -138,6 +138,12 @@
             height: 40px;
             border-radius: 50%;
             margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
         }
         
         .platform-title {
@@ -168,6 +174,7 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            border: 1px solid #eee;
         }
         
         .product-card:hover {
@@ -200,6 +207,7 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
             flex-grow: 1;
+            height: 40px;
         }
         
         .product-price {
@@ -233,11 +241,11 @@
             padding: 10px;
             text-align: center;
             border: none;
-            border-radius: 4px;
-            margin-top: 10px;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
             cursor: pointer;
             font-weight: 600;
             transition: background-color 0.3s ease;
+            text-decoration: none;
         }
         
         .jumia-button {
@@ -335,37 +343,18 @@
             background-color: #e0e0e0;
         }
         
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-content {
-            background-color: white;
-            padding: 30px;
-            border-radius: var(--border-radius);
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-        }
-        
-        .modal h2 {
-            margin-bottom: 20px;
-            color: #333;
-        }
-        
-        .modal p {
-            margin-bottom: 25px;
+        .platform-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
             color: #666;
-            line-height: 1.5;
+            font-size: 14px;
+        }
+        
+        .product-brand {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -373,7 +362,7 @@
     <header>
         <h1>Nigerian E-commerce Product Comparison</h1>
         <p>Compare products from Jumia and Konga</p>
-        <div class="timestamp" id="timestamp">Ready to search</div>
+        <div class="timestamp" id="timestamp">Search for products to compare prices and specifications</div>
     </header>
     
     <div class="search-container">
@@ -387,9 +376,7 @@
         <div class="search-history">
             <h3>Recent searches:</h3>
             <div class="history-tags" id="history-tags">
-                <span class="history-tag">smartphone</span>
-                <span class="history-tag">laptop</span>
-                <span class="history-tag">headphones</span>
+                <!-- Search history tags will be loaded here -->
             </div>
         </div>
     </div>
@@ -397,17 +384,20 @@
     <div class="loading" id="loading">
         <div class="spinner"></div>
         <p>Searching both platforms...</p>
-        <p>This may take up to 30 seconds</p>
+        <p>This may take a few moments</p>
     </div>
     
     <div class="results-container" id="results-container">
         <!-- Jumia Platform -->
         <div class="platform">
             <div class="platform-header">
-                <div class="platform-logo" style="background-color: var(--jumia-color);"></div>
+                <div class="platform-logo" style="background-color: var(--jumia-color);">J</div>
                 <h2 class="platform-title jumia-title">Jumia</h2>
             </div>
-            
+            <div class="platform-info" id="jumia-info">
+                <span id="jumia-count">0 products found</span>
+                <span id="jumia-timestamp"></span>
+            </div>
             <div class="product-grid" id="jumia-grid">
                 <!-- Products will be loaded here -->
             </div>
@@ -416,43 +406,21 @@
         <!-- Konga Platform -->
         <div class="platform">
             <div class="platform-header">
-                <div class="platform-logo" style="background-color: var(--konga-color);"></div>
+                <div class="platform-logo" style="background-color: var(--konga-color);">K</div>
                 <h2 class="platform-title konga-title">Konga</h2>
             </div>
-            
+            <div class="platform-info" id="konga-info">
+                <span id="konga-count">0 products found</span>
+                <span id="konga-timestamp"></span>
+            </div>
             <div class="product-grid" id="konga-grid">
                 <!-- Products will be loaded here -->
             </div>
         </div>
     </div>
     
-    <div class="modal" id="setup-modal">
-        <div class="modal-content">
-            <h2>Setup Instructions</h2>
-            <p>
-                To use this comparison tool, you need to set up a Node.js server that handles the scraping. 
-                Follow these steps to get started:
-            </p>
-            <ol style="text-align: left; margin-bottom: 20px;">
-                <li>Create a file named <code>server.js</code> with the provided backend code</li>
-                <li>Install the required dependencies using npm</li>
-                <li>Add your ZenRows API key to a <code>.env</code> file</li>
-                <li>Start the server with <code>node server.js</code></li>
-            </ol>
-            <button id="close-modal">Got it!</button>
-        </div>
-    </div>
-    
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Show setup modal
-            document.getElementById('setup-modal').style.display = 'flex';
-            
-            // Close modal button
-            document.getElementById('close-modal').addEventListener('click', function() {
-                document.getElementById('setup-modal').style.display = 'none';
-            });
-            
             // Elements
             const searchInput = document.getElementById('search-input');
             const searchButton = document.getElementById('search-button');
@@ -463,6 +431,10 @@
             const errorMessage = document.getElementById('error-message');
             const timestamp = document.getElementById('timestamp');
             const historyTags = document.getElementById('history-tags');
+            const jumiaCount = document.getElementById('jumia-count');
+            const kongaCount = document.getElementById('konga-count');
+            const jumiaTimestamp = document.getElementById('jumia-timestamp');
+            const kongaTimestamp = document.getElementById('konga-timestamp');
             
             // Search history management
             let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '["smartphone", "laptop", "headphones"]');
@@ -499,93 +471,42 @@
             // Initialize history
             updateSearchHistory();
             
-            // Function to parse product data from the markdown content
-            function parseProducts(data, platform) {
-                const products = [];
-                
-                try {
-                    if (platform === 'jumia') {
-                        // This is a simplified parser that extracts product info from the markdown
-                        // A more robust parser would use regex or DOM parsing for better accuracy
-                        const productMatches = data.match(/\[.*?\]\(http:\/\/www\.jumia\.com\.ng\/.*?\)/g);
-                        
-                        if (productMatches && productMatches.length > 0) {
-                            productMatches.forEach(match => {
-                                // Extract name and URL
-                                const nameMatch = match.match(/\[(.*?)\]/);
-                                const urlMatch = match.match(/\((.*?)\)/);
-                                
-                                if (nameMatch && urlMatch) {
-                                    const name = nameMatch[1];
-                                    const url = urlMatch[1];
-                                    
-                                    // Skip categories and other non-product links
-                                    if (name && url && !name.includes('Category') && !name.includes('See All')) {
-                                        products.push({
-                                            name: name,
-                                            url: url,
-                                            price: 'Price unavailable', // Price would need more complex parsing
-                                            image: null
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                    } else if (platform === 'konga') {
-                        // Extract Konga products
-                        const productSections = data.split('**');
-                        
-                        for (let i = 0; i < productSections.length; i++) {
-                            if (productSections[i].includes('http://www.konga.com/product/')) {
-                                const productBlock = productSections[i] + (productSections[i+1] || '');
-                                
-                                // Extract URL and name
-                                const urlMatch = productBlock.match(/\(http:\/\/www\.konga\.com\/product\/.*?\)/);
-                                let name = productBlock.trim();
-                                
-                                if (name.length > 10 && urlMatch) {
-                                    // Extract price from next section
-                                    const priceSection = productSections[i+1] || '';
-                                    const priceMatch = priceSection.match(/₦([\d,]+)/);
-                                    
-                                    const url = urlMatch[0].replace(/\(|\)/g, '');
-                                    const price = priceMatch ? `₦${priceMatch[1]}` : 'Price unavailable';
-                                    
-                                    // Clean up name
-                                    name = name.replace(/\[|\]/g, '').trim();
-                                    if (name.length > 10) {
-                                        products.push({
-                                            name: name,
-                                            url: url,
-                                            price: price,
-                                            image: null
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error(`Error parsing ${platform} data:`, error);
-                }
-                
-                // Return a limited number of products
-                return products.slice(0, 8);
-            }
-            
             // Function to create product cards
             function createProductCard(product, platform) {
                 const card = document.createElement('div');
                 card.className = 'product-card';
                 
-                // Create image placeholder
-                const imageDiv = document.createElement('div');
-                imageDiv.className = 'placeholder-image';
-                imageDiv.textContent = 'Image not available';
+                // Create image element or placeholder
+                if (product.image) {
+                    const img = document.createElement('img');
+                    img.className = 'product-image';
+                    img.src = product.image;
+                    img.alt = product.name;
+                    img.onerror = function() {
+                        this.onerror = null;
+                        this.parentNode.replaceChild(createImagePlaceholder(), this);
+                    };
+                    card.appendChild(img);
+                } else {
+                    card.appendChild(createImagePlaceholder());
+                }
+                
+                // Function to create image placeholder
+                function createImagePlaceholder() {
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'placeholder-image';
+                    imageDiv.textContent = 'Image not available';
+                    return imageDiv;
+                }
                 
                 // Create info section
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'product-info';
+                
+                // Create brand
+                const brandDiv = document.createElement('div');
+                brandDiv.className = 'product-brand';
+                brandDiv.textContent = product.brand || '';
                 
                 // Create product name
                 const nameDiv = document.createElement('div');
@@ -597,22 +518,78 @@
                 priceDiv.className = 'product-price';
                 priceDiv.textContent = product.price;
                 
+                // Add original price and discount if available
+                if (product.originalPrice) {
+                    const originalPrice = document.createElement('span');
+                    originalPrice.className = 'original-price';
+                    originalPrice.textContent = product.originalPrice;
+                    priceDiv.appendChild(originalPrice);
+                    
+                    if (product.discount) {
+                        const discount = document.createElement('span');
+                        discount.className = 'discount';
+                        discount.textContent = product.discount;
+                        priceDiv.appendChild(discount);
+                    }
+                }
+                
                 // Create button
-                const button = document.createElement('button');
+                const button = document.createElement('a');
                 button.className = `button ${platform}-button`;
                 button.textContent = `View on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`;
-                button.addEventListener('click', function() {
-                    window.open(product.url, '_blank');
-                });
+                button.href = product.url;
+                button.target = "_blank";
                 
                 // Assemble card
+                infoDiv.appendChild(brandDiv);
                 infoDiv.appendChild(nameDiv);
                 infoDiv.appendChild(priceDiv);
-                card.appendChild(imageDiv);
                 card.appendChild(infoDiv);
                 card.appendChild(button);
                 
                 return card;
+            }
+            
+            // Function to display search results
+            function displayResults(jumiaData, kongaData) {
+                // Format timestamps
+                const jumiaDate = new Date(jumiaData.timestamp);
+                const kongaDate = new Date(kongaData.timestamp);
+                
+                jumiaTimestamp.textContent = `Data from: ${jumiaDate.toLocaleString()}`;
+                kongaTimestamp.textContent = `Data from: ${kongaDate.toLocaleString()}`;
+                
+                // Clear previous results
+                jumiaGrid.innerHTML = '';
+                kongaGrid.innerHTML = '';
+                
+                // Display Jumia products
+                if (jumiaData.products && jumiaData.products.length > 0) {
+                    jumiaCount.textContent = `${jumiaData.products.length} products found`;
+                    jumiaData.products.forEach(product => {
+                        jumiaGrid.appendChild(createProductCard(product, 'jumia'));
+                    });
+                } else {
+                    jumiaCount.textContent = 'No products found';
+                    const noResults = document.createElement('div');
+                    noResults.className = 'no-results';
+                    noResults.textContent = 'No products found on Jumia';
+                    jumiaGrid.appendChild(noResults);
+                }
+                
+                // Display Konga products
+                if (kongaData.products && kongaData.products.length > 0) {
+                    kongaCount.textContent = `${kongaData.products.length} products found`;
+                    kongaData.products.forEach(product => {
+                        kongaGrid.appendChild(createProductCard(product, 'konga'));
+                    });
+                } else {
+                    kongaCount.textContent = 'No products found';
+                    const noResults = document.createElement('div');
+                    noResults.className = 'no-results';
+                    noResults.textContent = 'No products found on Konga';
+                    kongaGrid.appendChild(noResults);
+                }
             }
             
             // Function to perform the search
@@ -638,133 +615,33 @@
                 // Add to search history
                 addToSearchHistory(searchTerm);
                 
-           
-                // In production, you would make this API call instead:
-         
-         fetch(`http://localhost:3000/api/search?term=${encodeURIComponent(searchTerm)}`)
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Search failed');
-        }
-        return response.json();
-    })
-    .then(data => {
-        displayResults(data);
-        loadingSection.style.display = 'none';
-        resultsContainer.style.display = 'flex';
-        timestamp.textContent = `Results for "${searchTerm}" - ${now.toLocaleTimeString()}`;
-    })
-    .catch(error => {
-        errorMessage.textContent = `Error: ${error.message}`;
-        errorMessage.style.display = 'block';
-        loadingSection.style.display = 'none';
-    });
-            }
-            
-            // Function to display search results
-            function displayResults(data) {
-                // Clear previous results
-                jumiaGrid.innerHTML = '';
-                kongaGrid.innerHTML = '';
-                
-                // Process Jumia results
-                const jumiaProducts = data.find(item => item.source === 'jumia');
-                if (jumiaProducts && jumiaProducts.data) {
-                    const products = parseProducts(jumiaProducts.data, 'jumia');
-                    
-                    if (products.length === 0) {
-                        const noResults = document.createElement('div');
-                        noResults.className = 'no-results';
-                        noResults.textContent = 'No products found';
-                        jumiaGrid.appendChild(noResults);
-                    } else {
-                        products.forEach(product => {
-                            jumiaGrid.appendChild(createProductCard(product, 'jumia'));
-                        });
-                    }
-                }
-                
-                // Process Konga results
-                const kongaProducts = data.find(item => item.source === 'konga');
-                if (kongaProducts && kongaProducts.data) {
-                    const products = parseProducts(kongaProducts.data, 'konga');
-                    
-                    if (products.length === 0) {
-                        const noResults = document.createElement('div');
-                        noResults.className = 'no-results';
-                        noResults.textContent = 'No products found';
-                        kongaGrid.appendChild(noResults);
-                    } else {
-                        products.forEach(product => {
-                            kongaGrid.appendChild(createProductCard(product, 'konga'));
-                        });
-                    }
-                }
-            }
-            
-            // Function to generate mock data for demonstration
-            function generateMockData(searchTerm) {
-                const jumiaProducts = [
-                    {
-                        name: `${searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1)} Premium Model X1`,
-                        price: '₦179,000',
-                        url: 'http://www.jumia.com.ng/product-1'
-                    },
-                    {
-                        name: `Super ${searchTerm} Pro Version`,
-                        price: '₦145,500',
-                        url: 'http://www.jumia.com.ng/product-2'
-                    },
-                    {
-                        name: `${searchTerm} Ultra HD 2025 Edition`,
-                        price: '₦218,999',
-                        url: 'http://www.jumia.com.ng/product-3'
-                    },
-                    {
-                        name: `Basic ${searchTerm} for Beginners`,
-                        price: '₦85,000',
-                        url: 'http://www.jumia.com.ng/product-4'
-                    }
-                ];
-                
-                const kongaProducts = [
-                    {
-                        name: `${searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1)} Professional XL Series`,
-                        price: '₦189,500',
-                        url: 'http://www.konga.com/product-1'
-                    },
-                    {
-                        name: `Advanced ${searchTerm} with Extra Features`,
-                        price: '₦162,000',
-                        url: 'http://www.konga.com/product-2'
-                    },
-                    {
-                        name: `${searchTerm} Limited Edition Gold`,
-                        price: '₦235,000',
-                        url: 'http://www.konga.com/product-3'
-                    },
-                    {
-                        name: `Budget-friendly ${searchTerm} 2025`,
-                        price: '₦79,999',
-                        url: 'http://www.konga.com/product-4'
-                    }
-                ];
-                
-                const jumiaData = {
-                    source: 'jumia',
-                    searchTerm: searchTerm,
-                    timestamp: new Date().toISOString(),
-                    data: jumiaProducts.map(p => `[${p.name}](${p.url})\n\n${p.price}`).join('\n\n')
-                };
-                
-                const kongaData = {
-                    source: 'konga',
-                    searchTerm: searchTerm,
-                    timestamp: new Date().toISOString(),
-                    data: kongaProducts.map(p => `**${p.name}**(${p.url})\n\n${p.price}`).join('\n\n')
-                };
-                
-                return [jumiaData, kongaData];
+                // Make API call to backend
+                fetch(`/api/search?term=${encodeURIComponent(searchTerm)}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Search failed');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Extract Jumia and Konga data from the response
+                        const jumiaData = data.find(item => item.source === 'jumia') || { source: 'jumia', products: [], timestamp: new Date().toISOString() };
+                        const kongaData = data.find(item => item.source === 'konga') || { source: 'konga', products: [], timestamp: new Date().toISOString() };
+                        
+                        // Process and display the results
+                        displayResults(jumiaData, kongaData);
+                        
+                        loadingSection.style.display = 'none';
+                        resultsContainer.style.display = 'flex';
+                        
+                        // Update timestamp
+                        timestamp.textContent = `Results for "${searchTerm}" - ${now.toLocaleTimeString()}`;
+                    })
+                    .catch(error => {
+                        errorMessage.textContent = `Error: ${error.message}`;
+                        errorMessage.style.display = 'block';
+                        loadingSection.style.display = 'none';
+                    });
             }
             
             // Event listeners
@@ -777,6 +654,11 @@
                     performSearch(searchInput.value);
                 }
             });
+            
+            // Optional: Initialize with a default search
+            // If you want the page to load with results already showing,
+            // uncomment the following line:
+            // performSearch('smartphone');
         });
     </script>
 </body>
